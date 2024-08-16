@@ -16,6 +16,10 @@ var (
 	playerSource rl.Rectangle
 	playerDest   rl.Rectangle
 	playerSpeed  float32 = 3
+	playerDir    int
+	playerFrame  int
+
+	frameCount int
 
 	musicPaused bool
 	music       rl.Music
@@ -24,8 +28,17 @@ var (
 )
 
 func update() {
+	playerSource.X = 0
+
 	input()
 	gameRunning = !rl.WindowShouldClose()
+
+	frameCount++
+	if playerFrame > 3 {
+		playerFrame = 0
+	}
+
+	playerSource.Y = playerSource.Height * float32(max(0, playerDir))
 
 	rl.UpdateMusicStream(music)
 	if musicPaused {
@@ -41,20 +54,37 @@ func update() {
 }
 
 func input() {
+	var speedX float32 = 0.0
+	var speedY float32 = 0.0
+
 	if rl.IsKeyDown(rl.KeyW) || rl.IsKeyDown(rl.KeyUp) {
-		playerDest.Y -= playerSpeed
+		speedY = -playerSpeed
+		playerDir = 1
 	}
 
 	if rl.IsKeyDown(rl.KeyS) || rl.IsKeyDown(rl.KeyDown) {
-		playerDest.Y += playerSpeed
+		speedY = playerSpeed
+		playerDir = 0
 	}
 
 	if rl.IsKeyDown(rl.KeyA) || rl.IsKeyDown(rl.KeyLeft) {
-		playerDest.X -= playerSpeed
+		speedX = -playerSpeed
+		playerDir = 2
 	}
 
 	if rl.IsKeyDown(rl.KeyD) || rl.IsKeyDown(rl.KeyRight) {
-		playerDest.X += playerSpeed
+		speedX = playerSpeed
+		playerDir = 3
+	}
+
+	if speedX != 0.0 || speedY != 0.0 {
+		playerDest.X += float32(speedX)
+		playerDest.Y += float32(speedY)
+		if frameCount%8 == 1 {
+			playerFrame++
+		}
+
+		playerSource.X = playerSource.Width * float32(playerFrame)
 	}
 }
 
