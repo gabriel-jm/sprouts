@@ -19,6 +19,13 @@ var (
 	playerDir    int
 	playerFrame  int
 
+	tileDest  rl.Rectangle
+	tileSrc   rl.Rectangle
+	tileMap   []int
+	srcMap    []string
+	mapWidth  int
+	mapHeight int
+
 	frameCount int
 
 	musicPaused bool
@@ -28,16 +35,21 @@ var (
 )
 
 func update() {
-	playerSource.X = 0
+	playerSource.X = playerSource.Width * float32(playerFrame)
 
-	input()
+	isMoving := input()
 	gameRunning = !rl.WindowShouldClose()
+
+	if !isMoving && playerFrame > 1 {
+		playerFrame = 0
+	}
 
 	frameCount++
 	if playerFrame > 3 {
 		playerFrame = 0
 	}
 
+	playerSource.X = playerSource.Width * float32(playerFrame)
 	playerSource.Y = playerSource.Height * float32(max(0, playerDir))
 
 	rl.UpdateMusicStream(music)
@@ -53,7 +65,7 @@ func update() {
 	)
 }
 
-func input() {
+func input() bool {
 	var speedX float32 = 0.0
 	var speedY float32 = 0.0
 
@@ -84,8 +96,14 @@ func input() {
 			playerFrame++
 		}
 
-		playerSource.X = playerSource.Width * float32(playerFrame)
+		return true
 	}
+
+	if frameCount%45 == 1 {
+		playerFrame++
+	}
+
+	return false
 }
 
 func render() {
@@ -100,7 +118,25 @@ func render() {
 }
 
 func drawScene() {
-	rl.DrawTexture(grassSprite, 100, 50, rl.White)
+	// rl.DrawTexture(grassSprite, 100, 50, rl.White)
+
+	for i := 0; i < len(tileMap); i++ {
+		if tileMap[i] != 0 {
+			tileDest.X = tileDest.Width * float32(i%mapWidth)
+			tileDest.Y = tileDest.Height * float32(i/mapWidth)
+			tileSrc.X = tileSrc.Width * float32((tileMap[i]-1)%int(grassSprite.Width/int32(tileSrc.Width)))
+			tileSrc.Y = tileSrc.Height * float32((tileMap[i]-1)/int(grassSprite.Width/int32(tileSrc.Width)))
+			rl.DrawTexturePro(
+				grassSprite,
+				tileSrc,
+				tileDest,
+				rl.NewVector2(tileDest.Width, tileDest.Height),
+				0,
+				rl.White,
+			)
+		}
+	}
+
 	rl.DrawTexturePro(
 		playerSprite,
 		playerSource,
@@ -111,12 +147,25 @@ func drawScene() {
 	)
 }
 
+func loadMap() {
+	mapWidth = 5
+	mapHeight = 5
+
+	for i := 0; i < (mapWidth * mapHeight); i++ {
+		tileMap = append(tileMap, 2)
+	}
+}
+
 func init() {
 	rl.InitWindow(screenWidth, screenHeight, "Sprouts")
 	rl.SetExitKey(0)
 	rl.SetTargetFPS(60)
 
 	grassSprite = rl.LoadTexture("res/Tilesets/Grass.png")
+
+	tileDest = rl.NewRectangle(0, 0, 16, 16)
+	tileSrc = rl.NewRectangle(0, 0, 16, 16)
+
 	playerSprite = rl.LoadTexture("res/Characters/basic_char.png")
 	playerSource = rl.NewRectangle(0, 0, 48, 48)
 	playerDest = rl.NewRectangle(200, 200, 100, 100)
@@ -132,6 +181,8 @@ func init() {
 		0.0,
 		1.0,
 	)
+
+	loadMap()
 }
 
 func quit() {
