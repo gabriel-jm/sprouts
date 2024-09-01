@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"sprouts/internal"
 	"strconv"
 	"strings"
 
@@ -25,12 +26,7 @@ var (
 	waterSprite  rl.Texture2D
 	tilledSprite rl.Texture2D
 
-	playerSprite rl.Texture2D
-	playerSource rl.Rectangle
-	playerDest   rl.Rectangle
-	playerSpeed  float32 = 3
-	playerDir    int
-	playerFrame  int
+	player internal.Player
 
 	tileDest  rl.Rectangle
 	tileSrc   rl.Rectangle
@@ -48,22 +44,13 @@ var (
 )
 
 func update() {
-	playerSource.X = playerSource.Width * float32(playerFrame)
+	player.ResetSource()
 
 	isMoving := input()
 	gameRunning = !rl.WindowShouldClose()
 
-	if !isMoving && playerFrame > 1 {
-		playerFrame = 0
-	}
-
 	frameCount++
-	if playerFrame > 3 {
-		playerFrame = 0
-	}
-
-	playerSource.X = playerSource.Width * float32(playerFrame)
-	playerSource.Y = playerSource.Height * float32(max(0, playerDir))
+	player.Move(isMoving)
 
 	rl.UpdateMusicStream(music)
 	if musicPaused {
@@ -73,8 +60,8 @@ func update() {
 	}
 
 	cam.Target = rl.NewVector2(
-		float32(playerDest.X-(playerDest.Width/2)),
-		float32(playerDest.Y-(playerDest.Height/2)),
+		float32(player.Dest.X-(player.Dest.Width/2)),
+		float32(player.Dest.Y-(player.Dest.Height/2)),
 	)
 }
 
@@ -83,37 +70,37 @@ func input() bool {
 	var speedY float32 = 0.0
 
 	if rl.IsKeyDown(rl.KeyW) || rl.IsKeyDown(rl.KeyUp) {
-		speedY = -playerSpeed
-		playerDir = 1
+		speedY = -player.Speed
+		player.Dir = 1
 	}
 
 	if rl.IsKeyDown(rl.KeyS) || rl.IsKeyDown(rl.KeyDown) {
-		speedY = playerSpeed
-		playerDir = 0
+		speedY = player.Speed
+		player.Dir = 0
 	}
 
 	if rl.IsKeyDown(rl.KeyA) || rl.IsKeyDown(rl.KeyLeft) {
-		speedX = -playerSpeed
-		playerDir = 2
+		speedX = -player.Speed
+		player.Dir = 2
 	}
 
 	if rl.IsKeyDown(rl.KeyD) || rl.IsKeyDown(rl.KeyRight) {
-		speedX = playerSpeed
-		playerDir = 3
+		speedX = player.Speed
+		player.Dir = 3
 	}
 
 	if speedX != 0.0 || speedY != 0.0 {
-		playerDest.X += float32(speedX)
-		playerDest.Y += float32(speedY)
+		player.Dest.X += float32(speedX)
+		player.Dest.Y += float32(speedY)
 		if frameCount%8 == 1 {
-			playerFrame++
+			player.Frame++
 		}
 
 		return true
 	}
 
 	if frameCount%45 == 1 {
-		playerFrame++
+		player.Frame++
 	}
 
 	return false
@@ -184,10 +171,10 @@ func drawScene() {
 	}
 
 	rl.DrawTexturePro(
-		playerSprite,
-		playerSource,
-		playerDest,
-		rl.NewVector2(playerDest.Width, playerDest.Height),
+		player.Sprite,
+		player.Source,
+		player.Dest,
+		rl.NewVector2(player.Dest.Width, player.Dest.Height),
 		0,
 		rl.White,
 	)
@@ -235,18 +222,17 @@ func init() {
 	tileDest = rl.NewRectangle(0, 0, 16, 16)
 	tileSrc = rl.NewRectangle(0, 0, 16, 16)
 
-	playerSprite = rl.LoadTexture("res/Characters/basic_char.png")
-	playerSource = rl.NewRectangle(0, 0, 48, 48)
-	playerDest = rl.NewRectangle(200, 200, 60, 60)
+	player = internal.NewPlayer()
 
 	rl.InitAudioDevice()
 	music = rl.LoadMusicStream("res/music/hopeful.mp3")
 	musicPaused = false
+	rl.SetMusicVolume(music, 0.5)
 	rl.PlayMusicStream(music)
 
 	cam = rl.NewCamera2D(
 		rl.NewVector2(float32(screenWidth/2), float32(screenHeight/2)),
-		rl.NewVector2(float32(playerDest.X-(playerDest.Width/2)), float32(playerDest.Y-(playerDest.Height/2))),
+		rl.NewVector2(float32(player.Dest.X-(player.Dest.Width/2)), float32(player.Dest.Y-(player.Dest.Height/2))),
 		0.0,
 		1.0,
 	)
@@ -258,7 +244,7 @@ func init() {
 
 func quit() {
 	rl.UnloadTexture(grassSprite)
-	rl.UnloadTexture(playerSprite)
+	rl.UnloadTexture(player.Sprite)
 	rl.UnloadMusicStream(music)
 	rl.CloseAudioDevice()
 	rl.CloseWindow()
